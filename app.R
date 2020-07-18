@@ -47,7 +47,7 @@ ui <- fluidPage(
             radioButtons("transform", label = "Scaling:", choices = c("None", "Log"), selected="None"),
 	    tags$b("Toggles:"),
             checkboxInput("show_smoother", "Show 7 Day Moving Average", value = FALSE, width = NULL),
-            checkboxInput("hide_original", "Hide original", value = FALSE, width = NULL)
+            checkboxInput("hide_original", "Hide original", value = FALSE, width = NULL),
 	    ),
         column(7,
             plotOutput("Confirmed"),
@@ -57,6 +57,20 @@ ui <- fluidPage(
         column(3,
             tableOutput("Table")
         )
+    ),
+
+    hr(),
+    fluidRow(
+      column(12,
+	p("Data sourced from JHU COVID-19 data repository:",
+	  icon("github"),
+	  a("https://github.com/CSSEGISandData/COVID-19", href = "https://github.com/CSSEGISandData/COVID-19")
+	),
+	p("Repository for this app:",
+  	  icon("github"),
+	  a("https://github.com/pkepley/c19-dash", href = "https://github.com/pkepley/c19-dash")
+	)
+      )
     )
 )
 
