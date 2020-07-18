@@ -62,11 +62,13 @@ ui <- fluidPage(
     hr(),
     fluidRow(
       column(12,
-	p("Data sourced from JHU COVID-19 data repository:",
+	p("Data sourced from the JHU CSSE COVID-19 Data Repository:",
+          br(),
 	  icon("github"),
 	  a("https://github.com/CSSEGISandData/COVID-19", href = "https://github.com/CSSEGISandData/COVID-19")
 	),
 	p("Repository for this app:",
+          br(),
   	  icon("github"),
 	  a("https://github.com/pkepley/c19-dash", href = "https://github.com/pkepley/c19-dash")
 	)
