@@ -1,9 +1,10 @@
 library(shiny)
 library(scales)
 library(tidyverse)
-library(maps)
+#library(maps)
 library(ggthemes)
 library(shinyWidgets)
+library(DT)
 
 ## State geometry
 #state_geom = map_data('state')
@@ -55,7 +56,7 @@ ui <- fluidPage(
             plotOutput("ConditionedDeathRate"),
         ),
         column(3,
-            tableOutput("Table")
+            dataTableOutput("Table")
         )
     ),
 
@@ -161,18 +162,18 @@ server <- function(input, output, session) {
         region_table <- df_us_latest %>% 
             filter(Province_State %in% input$states) %>%
             select(c("Province_State", "Cumulative_Confirmed", "Cumulative_Deaths")) %>%
-            mutate(Cumulative_Confirmed = formatC(Cumulative_Confirmed, format="f", big.mark=",", digits=0),
-                   Cumulative_Deaths = formatC(Cumulative_Deaths, format="f", big.mark=",", digits=0)) %>%
             rename(State = Province_State, 
                    'Cumulative Confirmed' = Cumulative_Confirmed,
-                   'Cumulative Deaths' = Cumulative_Deaths)
+                   'Cumulative Deaths' = Cumulative_Deaths) %>%
+            datatable(options = list(paging = FALSE, searching = FALSE, dom = 'f'),
+                      rownames = FALSE) %>%
+            formatCurrency('Cumulative Confirmed', currency = "", interval = 3, mark = ",", digits = 0) %>%
+            formatCurrency('Cumulative Deaths', currency = "", interval = 3, mark = ",", digits = 0)                     
+            
 
         # Render the table for the region
-        output$Table <- renderTable(
-            region_table,
-            digits = 0,
-            align = 'r'
-        )
+        output$Table <- renderDataTable(region_table)
+
         
         # Confirmed Cases Plot
         output$Confirmed <- renderPlot({            
