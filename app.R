@@ -1,13 +1,10 @@
 library(shiny)
 library(scales)
 library(tidyverse)
-#library(maps)
 library(ggthemes)
 library(shinyWidgets)
 library(DT)
-
-## State geometry
-#state_geom = map_data('state')
+library(lubridate)
 
 # State data
 state_data <- data.frame(state.abb, state.name, state.division, state.region)
@@ -22,10 +19,17 @@ divisions_by_region <- state_data %>%
     summarise() %>%
     ungroup()
 
+# Start in the midwest!
+starting_region <- "North Central" 
+starting_region_states <- state_data %>%
+    filter(state.region == starting_region) %>%
+    select(state.name)
+starting_state_options <- lapply(as.list(starting_region_states$state.name), as.character)
+starting_state_options <- unlist(starting_state_options)
+
 # Pull data
 source("config.R") # read in app_data_dir
 us_df     <- read_csv(paste(app_data_dir, "us_cases.csv",  sep="/"))
-## reopen_df <- read_csv(paste(app_data_dir, "reopening.csv", sep="/"))
 
 # Latest data
 df_us_latest <- us_df %>% 
@@ -38,17 +42,39 @@ ui <- fluidPage(
 
     fluidRow(
         column(2,
-            selectInput("region", "Select Region:", regions, selected="Central"),
-            pickerInput(inputId = "states", label = "Select State:", choices = c(), 
-                options = list(`actions-box` = TRUE, size = 10,`selected-text-format` = "count > 3"), 
+            selectInput("region", "Select Region:", regions, selected="North Central"),
+            pickerInput(
+                inputId = "states",
+                label = "Select State:",
+                choices  = starting_state_options,
+                selected = starting_state_options,
+                options = list(
+                    `actions-box` = TRUE,
+                    size = 10,
+                    `selected-text-format`="count",
+                    `count-selected-text` = "Showing {0} of {1} States"
+                ),
                 multiple = TRUE                
             ),
+            sliderInput(
+               inputId = "start_date",
+               label = "First Display Date",
+               min = as_date("2020-03-15"),
+               max = as_date(today()),
+               step = 14,
+               ticks = FALSE,
+               value = as_date("2020-03-15"),
+               timeFormat = "%Y-%m-%d"
+            ),
+            
             radioButtons("cumu_or_new", label = "Cumulative or Newly Reported:", choices = c("Cumulative", "Newly Reported"), selected = "Cumulative"),
             radioButtons("raw_or_percap", label = "Raw or Per Capita:", choices = c("Raw", "Per Capita"), selected="Raw"),
             radioButtons("transform", label = "Scaling:", choices = c("None", "Log"), selected="None"),
 	    tags$b("Toggles:"),
             checkboxInput("show_smoother", "Show 7 Day Moving Average", value = FALSE, width = NULL),
             checkboxInput("hide_original", "Hide original", value = FALSE, width = NULL),
+            #bookmarkButton(label = "Share Current Plots",
+            #               title = "Bookmark the current plots and get a URL for sharing.")
 	    ),
         column(7,
             plotOutput("Confirmed"),
@@ -82,6 +108,11 @@ server <- function(input, output, session) {
     
     # Update the selection list for region division
     observe({
+        print("HOWDY FROM HERE")
+        print(regions)
+        print(starting_state_options)
+        print(input$states)
+              
         region_states <- state_data %>%
             filter(state.region == input$region) %>%
             select(state.name)
@@ -153,9 +184,8 @@ server <- function(input, output, session) {
         
         # Dataset to Plot
         us_df_to_plot <- us_df %>% 
-            filter(report_date > "2020-03-12", Province_State %in% input$states) %>%
-            #left_join(reopen_df, by = c("Province_State" = "state"))
-
+            filter(report_date >= input$start_date, 
+                   Province_State %in% input$states)
         print(us_df_to_plot %>% head())
         
         # Table of most recent data
@@ -170,7 +200,7 @@ server <- function(input, output, session) {
             formatCurrency('Cumulative Confirmed', currency = "", interval = 3, mark = ",", digits = 0) %>%
             formatCurrency('Cumulative Deaths', currency = "", interval = 3, mark = ",", digits = 0)                     
             
-
+        
         # Render the table for the region
         output$Table <- renderDataTable(region_table)
 
@@ -232,5 +262,6 @@ server <- function(input, output, session) {
 }
 
 # Run the application 
+#shinyApp(ui = ui, server = server, enableBookmarking = "url")
 shinyApp(ui = ui, server = server)
 
