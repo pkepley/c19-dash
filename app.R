@@ -36,8 +36,9 @@ df_us_latest <- us_df %>%
     filter(report_date == max(report_date))
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
-    # Application title
+ui <- function(request){
+fluidPage(
+    ## Application title
     titlePanel("COVID-19 Cases by Reporting Date"),
 
     fluidRow(
@@ -58,7 +59,7 @@ ui <- fluidPage(
             ),
             sliderInput(
                inputId = "start_date",
-               label = "First Display Date",
+               label = "Select First Display Date:",
                min = as_date("2020-03-15"),
                max = as_date(today()),
                step = 14,
@@ -73,8 +74,8 @@ ui <- fluidPage(
 	    tags$b("Toggles:"),
             checkboxInput("show_smoother", "Show 7 Day Moving Average", value = FALSE, width = NULL),
             checkboxInput("hide_original", "Hide original", value = FALSE, width = NULL),
-            #bookmarkButton(label = "Share Current Plots",
-            #               title = "Bookmark the current plots and get a URL for sharing.")
+            bookmarkButton(label = "Share Current Plots",
+                           title = "Bookmark the current plots and get a URL for sharing.")
 	    ),
         column(7,
             plotOutput("Confirmed"),
@@ -102,17 +103,13 @@ ui <- fluidPage(
       )
     )
 )
+}
 
 # Define server logic
 server <- function(input, output, session) {
     
     # Update the selection list for region division
-    observe({
-        print("HOWDY FROM HERE")
-        print(regions)
-        print(starting_state_options)
-        print(input$states)
-              
+    observeEvent(input$region, {              
         region_states <- state_data %>%
             filter(state.region == input$region) %>%
             select(state.name)
@@ -262,6 +259,6 @@ server <- function(input, output, session) {
 }
 
 # Run the application 
-#shinyApp(ui = ui, server = server, enableBookmarking = "url")
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, enableBookmarking = "url")
+#shinyApp(ui = ui, server = server)
 
