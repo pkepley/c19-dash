@@ -5,6 +5,10 @@ library(ggthemes)
 library(shinyWidgets)
 library(DT)
 library(lubridate)
+library(ggthemes)
+library(ggdark)
+library(data.table)
+
 
 # State data
 state_data <- data.frame(state.abb, state.name, state.division, state.region)
@@ -29,7 +33,8 @@ starting_state_options <- unlist(starting_state_options)
 
 # Pull data
 source("config.R") # read in app_data_dir
-us_df     <- read_csv(paste(app_data_dir, "us_cases.csv",  sep="/"))
+#us_df     <- read_csv(paste(app_data_dir, "us_cases.csv",  sep="/"))
+us_df     <- fread(paste(app_data_dir, "us_cases.csv",  sep="/")) %>% tibble()
 
 # Latest data
 df_us_latest <- us_df %>% 
@@ -38,6 +43,7 @@ df_us_latest <- us_df %>%
 # Define UI for application that draws a histogram
 ui <- function(request){
 fluidPage(
+    theme = shinythemes::shinytheme("cyborg"),
     ## Application title
     titlePanel("COVID-19 Cases by Reporting Date"),
 
@@ -132,21 +138,21 @@ server <- function(input, output, session) {
             cumu_or_new = 'New'
         }
         
-        # Show a smoother or not        
-        if (input$show_smoother){
-            smoothing_geom <- geom_line
-        }
-        else{
-            smoothing_geom = geom_blank
-        }
-        
-        # Show line for original data or not
-        if (input$hide_original){
-            line_geom = geom_blank
-        }
-        else{
-            line_geom = geom_line
-        }
+        # # Show a smoother or not        
+        # if (input$show_smoother){
+        #     smoothing_geom <- geom_line
+        # }
+        # else{
+        #     smoothing_geom = geom_blank
+        # }
+        # 
+        # # Show line for original data or not
+        # if (input$hide_original){
+        #     line_geom = geom_blank
+        # }
+        # else{
+        #     line_geom = geom_line
+        # }
         
 
         # Display raw or Per Capita
@@ -193,72 +199,85 @@ server <- function(input, output, session) {
                    'Cumulative Confirmed' = Cumulative_Confirmed,
                    'Cumulative Deaths' = Cumulative_Deaths) %>%
             datatable(options = list(paging = FALSE, searching = FALSE, dom = 'f'),
-                      rownames = FALSE) %>%
-            formatCurrency('Cumulative Confirmed', currency = "", interval = 3, mark = ",", digits = 0) %>%
-            formatCurrency('Cumulative Deaths', currency = "", interval = 3, mark = ",", digits = 0)                     
-            
+                      rownames = FALSE,
+                      style="bootstrap") %>%
+            formatCurrency('Cumulative Confirmed', currency = "", interval = 3,
+                           mark = ",", digits = 0) %>%
+            formatCurrency('Cumulative Deaths', currency = "", interval = 3,
+                           mark = ",", digits = 0)                     
         
         # Render the table for the region
         output$Table <- renderDataTable(region_table)
 
-        
         # Confirmed Cases Plot
         output$Confirmed <- renderPlot({            
-            ggplot(data = us_df_to_plot) + 
-                line_geom(mapping = aes_string(x = "report_date", y = count_raw_or_percap_var, color = "Province_State")) + 
-                smoothing_geom(mapping = aes_string(x = "report_date", y = count_raw_or_percap_var_MA, color = "Province_State"), lwd=1) +
-                xlab("Reporting Date") +
-                ylab(count_raw_or_percap_string) +
-                ggtitle(paste(count_raw_or_percap_string, " by Reporting Date", sep="")) +
-                labs(color = "State") + 
-                theme_classic() +
-                theme(text = element_text(size=14),
-                      legend.title = element_text(size=18),
-                      axis.text = element_text(size=14),
-                      axis.title = element_text(size=16)) +         
-                scale_colour_tableau('Tableau 20') +
-                y_axis_scaling
+            ggplot(data = us_df_to_plot) +
+            `if`(input$hide_original, 
+                 geom_blank(),
+                 geom_line(mapping = aes_string(x = "report_date", y = count_raw_or_percap_var, color = "Province_State"))) + 
+            `if`(input$show_smoother, 
+                 geom_line(mapping = aes_string(x = "report_date", y = count_raw_or_percap_var_MA, color = "Province_State"), lwd=1),
+                 geom_blank()) + 
+            xlab("Reporting Date") +
+            ylab(count_raw_or_percap_string) +
+            ggtitle(paste(count_raw_or_percap_string, " by Reporting Date", sep="")) +
+            labs(color = "State") + 
+            dark_mode(theme_classic()) +               
+            theme(text = element_text(size=14),
+                  legend.title = element_text(size=18),
+                  axis.text = element_text(size=14),
+                  axis.title = element_text(size=16)) +         
+            scale_colour_tableau('Tableau 20') +
+            y_axis_scaling
         })
 
         # Confirmed Deaths Plot
         output$Deaths <- renderPlot({
             ggplot(data = us_df_to_plot) + 
-                line_geom(mapping = aes_string(x = "report_date", y = death_raw_or_percap_var, color = "Province_State")) + 
-                smoothing_geom(mapping = aes_string(x = "report_date", y = death_raw_or_percap_var_MA, color = "Province_State"), lwd=1) +
-                xlab("Reporting Date") +
-                ylab(death_raw_or_percap_string) +
-                ggtitle(paste(death_raw_or_percap_string, " by Reporting Date", sep="")) +
+            `if`(input$hide_original, 
+                 geom_blank(),
+                 geom_line(mapping = aes_string(x = "report_date", y = death_raw_or_percap_var, color = "Province_State"))) + 
+            `if`(input$show_smoother, 
+                 geom_line(mapping = aes_string(x = "report_date", y = death_raw_or_percap_var_MA, color = "Province_State"), lwd=1),
+                 geom_blank()) + 
+            xlab("Reporting Date") +
+            ylab(death_raw_or_percap_string) +
+            ggtitle(paste(death_raw_or_percap_string, " by Reporting Date", sep="")) +
             labs(color = "State") + 
-                theme_classic() +
-                theme(text = element_text(size=14),
-                      legend.title = element_text(size=18),
-                      axis.text = element_text(size=14),
-                      axis.title = element_text(size=16)) +         
-                scale_colour_tableau('Tableau 20') + 
+            dark_mode(theme_classic()) +               
+            theme(text = element_text(size=14),
+                  legend.title = element_text(size=18),
+                  axis.text = element_text(size=14),
+                  axis.title = element_text(size=16)) +         
+            scale_colour_tableau('Tableau 20') + 
             y_axis_scaling            
         })
 
         # Case Fatality Rate Plot        
         output$ConditionedDeathRate <- renderPlot({
             ggplot(data = us_df_to_plot) + 
-                line_geom(mapping = aes(x = report_date, y = Death_Rate, color = Province_State)) +
-                smoothing_geom(mapping = aes(x = report_date, y = Death_Rate_MA, color = Province_State), lwd=1) + 
-                xlab("Reporting Date") +
-                ylab("Case Fatality Rate") +
-                ggtitle("Case Fatality Rate (Deaths / Confirmed)") +
-                labs(color = "State") + 
-                theme_classic() +
-                theme(text = element_text(size=14),
-                      legend.title = element_text(size=18),
-                      axis.text = element_text(size=14),
-                      axis.title = element_text(size=16)) +         
-                scale_colour_tableau('Tableau 20') + 
-                scale_y_continuous(labels = percent)
+            `if`(input$hide_original, 
+                 geom_blank(),
+                 geom_line(mapping = aes_string(x = "report_date", y = "Death_Rate", color = "Province_State"))) + 
+            `if`(input$show_smoother, 
+                 geom_line(mapping = aes_string(x = "report_date", y = "Death_Rate_MA", color = "Province_State"), lwd=1),
+                 geom_blank()) + 
+            xlab("Reporting Date") +
+            ylab("Case Fatality Rate") +
+            ggtitle("Case Fatality Rate (Confirmed Deaths / Confirmed Cases)") +
+            labs(color = "State") + 
+            dark_mode(theme_classic()) +               
+            theme(text = element_text(size=14),
+                  legend.title = element_text(size=18),
+                  axis.text = element_text(size=14),
+                  axis.title = element_text(size=16)) +         
+            scale_colour_tableau('Tableau 20') + 
+            scale_y_continuous(labels = percent)
         })
     })
 }
 
 # Run the application 
-shinyApp(ui = ui, server = server, enableBookmarking = "url")
-#shinyApp(ui = ui, server = server)
+app <- shinyApp(ui = ui, server = server, enableBookmarking = "url")
+#runApp(app, host="0.0.0.0", port=1234)
 
